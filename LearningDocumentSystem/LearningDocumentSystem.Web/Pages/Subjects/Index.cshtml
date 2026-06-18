@@ -9,7 +9,7 @@
         <h1 class="page-title"><i class="bi bi-book-fill me-2"></i>Môn học</h1>
         <p class="page-subtitle">Quản lý các môn học trong hệ thống</p>
     </div>
-    @if (User.IsInRole("Teacher"))
+    @if (User.IsInRole("Admin"))
     {
         <a asp-page="/Subjects/Create" class="btn btn-primary btn-action">
             <i class="bi bi-plus-circle me-2"></i>Thêm môn học
@@ -37,14 +37,14 @@
                             <th>Mã học phần</th>
                             <th>Số chương</th>
                             <th>Ngày tạo</th>
-                            @if (User.IsInRole("Teacher")) { <th class="text-end">Thao tác</th> }
+                            @if (User.IsInRole("Admin")) { <th class="text-end">Thao tác</th> }
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="subjectsTableBody">
                         @{int i = 1;}
                         @foreach (var s in Model.Subjects)
                         {
-                            <tr>
+                            <tr data-subject-id="@s.SubjectID">
                                 <td class="text-muted">@(i++)</td>
                                 <td>
                                     <a asp-page="/Chapters/Index" asp-route-subjectId="@s.SubjectID" class="doc-link fw-semibold">
@@ -62,7 +62,7 @@
                                     </span>
                                 </td>
                                 <td class="text-muted small">@s.CreatedAt.ToString("dd/MM/yyyy")</td>
-                                @if (User.IsInRole("Teacher"))
+                                @if (User.IsInRole("Admin"))
                                 {
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm">
@@ -121,16 +121,113 @@
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     }
 
-    // Realtime update listener to reload subjects list
+    function getSubjectValue(subject, key) {
+        const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+        const idKey = key.endsWith('Id') ? key.slice(0, -2) + 'ID' : key;
+        return subject[key] ?? subject[pascalKey] ?? subject[idKey] ?? subject[idKey.charAt(0).toUpperCase() + idKey.slice(1)];
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(value) {
+        const date = value ? new Date(value) : new Date();
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function renumberSubjects() {
+        document.querySelectorAll('#subjectsTableBody tr').forEach((row, index) => {
+            const numberCell = row.querySelector('td');
+            if (numberCell) numberCell.textContent = index + 1;
+        });
+    }
+
+    function renderSubjectRow(subject) {
+        const id = getSubjectValue(subject, 'subjectId');
+        const name = getSubjectValue(subject, 'subjectName');
+        const code = getSubjectValue(subject, 'subjectCode');
+        const chapterCount = getSubjectValue(subject, 'chapterCount') ?? 0;
+        const createdAt = getSubjectValue(subject, 'createdAt');
+        const deleteCall = `confirmDelete(${id}, ${JSON.stringify(name ?? '')})`;
+
+        return `
+            <tr data-subject-id="${escapeHtml(id)}">
+                <td class="text-muted"></td>
+                <td>
+                    <a href="/Chapters?subjectId=${encodeURIComponent(id)}" class="doc-link fw-semibold">
+                        ${escapeHtml(name)}
+                    </a>
+                </td>
+                <td>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
+                        ${escapeHtml(code)}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-secondary-subtle text-secondary">
+                        <i class="bi bi-collection me-1"></i>${escapeHtml(chapterCount)} chương
+                    </span>
+                </td>
+                <td class="text-muted small">${escapeHtml(formatDate(createdAt))}</td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <a href="/Subjects/Details/${encodeURIComponent(id)}" class="btn btn-outline-info" title="Chi tiết">
+                            <i class="bi bi-info-circle-fill"></i>
+                        </a>
+                        <a href="/Subjects/Edit/${encodeURIComponent(id)}" class="btn btn-outline-warning" title="Sửa">
+                            <i class="bi bi-pencil-fill"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" onclick='${escapeHtml(deleteCall)}' title="Xóa">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+    }
+
+    function upsertSubjectRow(subject) {
+        const tbody = document.getElementById('subjectsTableBody');
+        if (!tbody) {
+            window.location.reload();
+            return;
+        }
+
+        const id = getSubjectValue(subject, 'subjectId');
+        const existingRow = tbody.querySelector(`tr[data-subject-id="${CSS.escape(String(id))}"]`);
+        const rowHtml = renderSubjectRow(subject).trim();
+
+        if (existingRow) {
+            existingRow.outerHTML = rowHtml;
+        } else {
+            tbody.insertAdjacentHTML('beforeend', rowHtml);
+        }
+
+        renumberSubjects();
+    }
+
+    function removeSubjectRow(payload) {
+        const id = getSubjectValue(payload, 'subjectId');
+        const row = document.querySelector(`#subjectsTableBody tr[data-subject-id="${CSS.escape(String(id))}"]`);
+        if (row) {
+            row.remove();
+            renumberSubjects();
+        }
+    }
+
+    // Realtime update listener to update subjects list without a manual refresh
     document.addEventListener("realtimeUpdate", function(e) {
         const type = e.detail.messageType;
-        if (type.startsWith("Subject")) {
-            console.log("Realtime event matched in Subjects Index. Reloading...");
-            // Briefly wait for DB changes to persist and reload
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        }
+        const payload = e.detail.payload;
+
+        if (type === "SubjectCreated" || type === "SubjectUpdated") upsertSubjectRow(payload);
+        else if (type === "SubjectDeleted") removeSubjectRow(payload);
     });
 </script>
 }

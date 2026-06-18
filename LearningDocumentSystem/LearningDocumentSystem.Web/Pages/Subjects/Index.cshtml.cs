@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LearningDocumentSystem.Web.Pages.Subjects
 {
-    [Authorize]
+    [Authorize(Policy = "AdminOnly")]
     public class IndexModel : PageModel
     {
         private readonly ISubjectService _subjectService;

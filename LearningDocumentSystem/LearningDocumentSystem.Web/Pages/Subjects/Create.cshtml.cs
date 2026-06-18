@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace LearningDocumentSystem.Web.Pages.Subjects
 {
-    [Authorize(Policy = "TeacherUp")]
+    [Authorize(Policy = "AdminOnly")]
     public class CreateModel : PageModel
     {
         private readonly ISubjectService _subjectService;

@@ -25,7 +25,7 @@
 
                     <div class="mb-4">
                         <label asp-for="Input.SubjectID" class="form-label fw-semibold"></label>
-                        <select asp-for="Input.SubjectID" class="form-select">
+                        <select asp-for="Input.SubjectID" class="form-select" id="subjectSelect">
                             <option value="">— Chọn môn học —</option>
                             @foreach (var s in Model.Input.Subjects)
                             {
@@ -62,4 +62,48 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function getSubjectValue(subject, key) {
+            const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+            const idKey = key.endsWith('Id') ? key.slice(0, -2) + 'ID' : key;
+            return subject[key] ?? subject[pascalKey] ?? subject[idKey] ?? subject[idKey.charAt(0).toUpperCase() + idKey.slice(1)];
+        }
+
+        function subjectOptionText(subject) {
+            return `[${getSubjectValue(subject, 'subjectCode')}] ${getSubjectValue(subject, 'subjectName')}`;
+        }
+
+        function upsertSubjectOption(subject) {
+            const select = document.getElementById('subjectSelect');
+            if (!select) return;
+
+            const id = String(getSubjectValue(subject, 'subjectId'));
+            const text = subjectOptionText(subject);
+            let option = Array.from(select.options).find(o => o.value === id);
+
+            if (!option) {
+                option = new Option(text, id);
+                select.add(option);
+            } else {
+                option.text = text;
+            }
+        }
+
+        function removeSubjectOption(payload) {
+            const select = document.getElementById('subjectSelect');
+            if (!select) return;
+
+            const id = String(getSubjectValue(payload, 'subjectId'));
+            const option = Array.from(select.options).find(o => o.value === id);
+            if (option) option.remove();
+        }
+
+        document.addEventListener("realtimeUpdate", function(e) {
+            const type = e.detail.messageType;
+            const payload = e.detail.payload;
+
+            if (type === "SubjectCreated" || type === "SubjectUpdated") upsertSubjectOption(payload);
+            else if (type === "SubjectDeleted") removeSubjectOption(payload);
+        });
+    </script>
 }

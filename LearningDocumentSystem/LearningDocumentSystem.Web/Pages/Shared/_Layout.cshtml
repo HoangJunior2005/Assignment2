@@ -71,6 +71,11 @@
                             <i class="bi bi-people-fill"></i> Quản lý quyền
                         </a>
                     </li>
+                    <li class="@(activePage.StartsWith("/Subjects") ? "active" : "")">
+                        <a asp-page="/Subjects/Index">
+                            <i class="bi bi-book-fill"></i> Môn học
+                        </a>
+                    </li>
                     <li class="@(activePage.StartsWith("/AllowedEmails") ? "active" : "")">
                         <a asp-page="/AllowedEmails/Index">
                             <i class="bi bi-envelope-check-fill"></i> Whitelist email
@@ -81,11 +86,6 @@
                 @if (User.IsInRole("Teacher") || User.IsInRole("Student"))
                 {
                     <li class="menu-section">Quản lý nội dung</li>
-                    <li class="@(activePage.StartsWith("/Subjects") ? "active" : "")">
-                        <a asp-page="/Subjects/Index">
-                            <i class="bi bi-book-fill"></i> Môn học
-                        </a>
-                    </li>
                     <li class="@(activePage.StartsWith("/Chapters") ? "active" : "")">
                         <a asp-page="/Chapters/Index">
                             <i class="bi bi-journal-bookmark-fill"></i> Chương học

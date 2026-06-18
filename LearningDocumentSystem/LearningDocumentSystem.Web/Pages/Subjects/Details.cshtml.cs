@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace LearningDocumentSystem.Web.Pages.Subjects
 {
-    [Authorize]
+    [Authorize(Policy = "AdminOnly")]
     public class DetailsModel : PageModel
     {
         private readonly ISubjectService _subjectService;

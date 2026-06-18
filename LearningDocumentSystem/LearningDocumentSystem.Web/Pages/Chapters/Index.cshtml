@@ -23,7 +23,7 @@
         <form method="get" class="row g-3 align-items-end">
             <div class="col-lg-4 col-md-6">
                 <label class="form-label small fw-semibold text-muted">Lọc theo môn học</label>
-                <select name="subjectId" class="form-select" onchange="this.form.submit()">
+                <select name="subjectId" class="form-select" id="filterSubject" onchange="this.form.submit()">
                     <option value="">— Tất cả môn học —</option>
                     @foreach (var s in Model.Subjects)
                     {
@@ -133,9 +133,49 @@
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     }
 
+    function getSubjectValue(subject, key) {
+        const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+        const idKey = key.endsWith('Id') ? key.slice(0, -2) + 'ID' : key;
+        return subject[key] ?? subject[pascalKey] ?? subject[idKey] ?? subject[idKey.charAt(0).toUpperCase() + idKey.slice(1)];
+    }
+
+    function subjectOptionText(subject) {
+        return `[${getSubjectValue(subject, 'subjectCode')}] ${getSubjectValue(subject, 'subjectName')}`;
+    }
+
+    function upsertSubjectOption(subject) {
+        const select = document.getElementById('filterSubject');
+        if (!select) return;
+
+        const id = String(getSubjectValue(subject, 'subjectId'));
+        const text = subjectOptionText(subject);
+        let option = Array.from(select.options).find(o => o.value === id);
+
+        if (!option) {
+            option = new Option(text, id);
+            select.add(option);
+        } else {
+            option.text = text;
+        }
+    }
+
+    function removeSubjectOption(payload) {
+        const select = document.getElementById('filterSubject');
+        if (!select) return;
+
+        const id = String(getSubjectValue(payload, 'subjectId'));
+        const option = Array.from(select.options).find(o => o.value === id);
+        if (option) option.remove();
+    }
+
     // Realtime update listener to reload chapters list
     document.addEventListener("realtimeUpdate", function(e) {
         const type = e.detail.messageType;
+        const payload = e.detail.payload;
+
+        if (type === "SubjectCreated" || type === "SubjectUpdated") upsertSubjectOption(payload);
+        else if (type === "SubjectDeleted") removeSubjectOption(payload);
+
         if (type.startsWith("Chapter")) {
             console.log("Realtime event matched in Chapters Index. Reloading...");
             setTimeout(() => {
