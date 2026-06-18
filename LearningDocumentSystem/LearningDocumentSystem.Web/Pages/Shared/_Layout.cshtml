@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Hệ thống quản lý tài liệu học tập tích hợp AI/RAG" />
+    <title>@ViewData["Title"] — LDS System</title>
+
+    <!-- Bootstrap 5 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <!-- SIDEBAR LAYOUT -->
+    <div class="d-flex" id="wrapper">
+
+        <!-- ===== SIDEBAR ===== -->
+        <nav id="sidebar" class="sidebar-nav">
+            <!-- Logo -->
+            <div class="sidebar-brand">
+                <div class="sidebar-logo">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <span>LDS System</span>
+                </div>
+                <small class="sidebar-tagline">AI-Ready Document Hub</small>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    @(User.FindFirst("FullName")?.Value?.Substring(0, 1).ToUpper() ?? "U")
+                </div>
+                <div class="user-info">
+                    <div class="user-name">@User.FindFirst("FullName")?.Value</div>
+                    <div class="user-role">
+                        @if (User.IsInRole("Admin"))      { <span class="badge badge-admin">Admin</span> }
+                        else if (User.IsInRole("Teacher")) { <span class="badge badge-teacher">Teacher</span> }
+                        else                               { <span class="badge badge-student">Student</span> }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            @{
+                var activePage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+            }
+            <ul class="sidebar-menu">
+                @if (User.IsInRole("Admin") || User.IsInRole("Teacher"))
+                {
+                    <li class="menu-section">Tổng quan</li>
+                    <li class="@(activePage == "/Index" ? "active" : "")">
+                        <a asp-page="/Index">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                }
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <li class="menu-section">Quản trị</li>
+                    <li class="@(activePage.StartsWith("/Users") ? "active" : "")">
+                        <a asp-page="/Users/Index">
+                            <i class="bi bi-people-fill"></i> Quản lý quyền
+                        </a>
+                    </li>
+                    <li class="@(activePage.StartsWith("/AllowedEmails") ? "active" : "")">
+                        <a asp-page="/AllowedEmails/Index">
+                            <i class="bi bi-envelope-check-fill"></i> Whitelist email
+                        </a>
+                    </li>
+                }
+
+                @if (User.IsInRole("Teacher") || User.IsInRole("Student"))
+                {
+                    <li class="menu-section">Quản lý nội dung</li>
+                    <li class="@(activePage.StartsWith("/Subjects") ? "active" : "")">
+                        <a asp-page="/Subjects/Index">
+                            <i class="bi bi-book-fill"></i> Môn học
+                        </a>
+                    </li>
+                    <li class="@(activePage.StartsWith("/Chapters") ? "active" : "")">
+                        <a asp-page="/Chapters/Index">
+                            <i class="bi bi-journal-bookmark-fill"></i> Chương học
+                        </a>
+                    </li>
+                    <li class="@(activePage.StartsWith("/Documents") && activePage != "/Documents/Upload" ? "active" : "")">
+                        <a asp-page="/Documents/Index">
+                            <i class="bi bi-file-earmark-text-fill"></i> Tài liệu
+                        </a>
+                    </li>
+
+                    <li class="menu-section">Trợ lý AI</li>
+                    <li class="@(activePage.StartsWith("/Chat") ? "active" : "")">
+                        <a asp-page="/Chat/Index">
+                            <i class="bi bi-robot"></i> Hỏi đáp AI
+                        </a>
+                    </li>
+                }
+
+                @if (User.IsInRole("Teacher"))
+                {
+                    <li class="menu-section">Thao tác</li>
+                    <li class="@(activePage == "/Documents/Upload" ? "active" : "")">
+                        <a asp-page="/Documents/Upload">
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Upload tài liệu
+                        </a>
+                    </li>
+                }
+
+            </ul>
+
+            <!-- Logout -->
+            <div class="sidebar-footer">
+                <form asp-page="/Account/Logout" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-logout">
+                        <i class="bi bi-box-arrow-left"></i> Đăng xuất
+                    </button>
+                </form>
+            </div>
+        </nav>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <div id="content-wrapper">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <button id="sidebarToggle" class="btn-sidebar-toggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="topbar-breadcrumb">
+                    @await Html.PartialAsync("_Breadcrumb")
+                </div>
+                <div class="topbar-right">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle topbar-user border-0 bg-transparent py-1 px-2 d-flex align-items-center text-dark" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" style="outline: none; box-shadow: none;">
+                            <i class="bi bi-person-circle me-1 fs-5"></i>
+                            <span>@User.Identity?.Name</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userMenuButton" style="min-width: 180px;">
+                            <li>
+                                <div class="dropdown-header text-muted small pb-1">
+                                    Tài khoản: <strong>@User.Identity?.Name</strong>
+                                </div>
+                                <div class="dropdown-header text-muted small pt-0">
+                                    Họ tên: <strong>@User.FindFirst("FullName")?.Value</strong>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-page="/Account/Logout" method="post" class="px-2">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="dropdown-item rounded text-danger d-flex align-items-center py-2" style="font-size: 0.9rem;">
+                                        <i class="bi bi-box-arrow-left me-2"></i>Đăng xuất
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Toast Notifications -->
+            @await Html.PartialAsync("_Toast")
+
+            <!-- Main Content -->
+            <main class="main-content">
+                @RenderBody()
+            </main>
+
+            <!-- Footer -->
+            <footer class="main-footer">
+                <span>© 2026 LDS System — AI-Ready Document Hub</span>
+                <span class="ms-auto text-muted">Powered by ASP.NET Core 8 + EF Core</span>
+            </footer>
+        </div>
+    </div>
+}
+else
+{
+    <!-- AUTH PAGES (Login) - Full screen -->
+    @RenderBody()
+}
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- SignalR client -->
+<script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<!-- Custom JS -->
+<script src="~/js/site.js" asp-append-version="true"></script>
+
+<!-- Setup SignalR Client Connection -->
+<script>
+    if (typeof signalR !== 'undefined') {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notificationHub")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("ReceiveNotification", (messageType, payload) => {
+            console.log("Realtime notification received:", messageType, payload);
+            
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 4500,
+                    timerProgressBar: true
+                });
+                
+                let text = "Hệ thống có cập nhật mới.";
+                if (messageType === "SubjectCreated") text = `Môn học mới được tạo: ${payload.subjectName}`;
+                else if (messageType === "SubjectUpdated") text = `Môn học đã cập nhật: ${payload.subjectName}`;
+                else if (messageType === "SubjectDeleted") text = `Một môn học đã bị xóa.`;
+                else if (messageType === "ChapterCreated") text = `Chương mới được tạo: Chương ${payload.chapterNumber} - ${payload.chapterName}`;
+                else if (messageType === "ChapterUpdated") text = `Chương học đã cập nhật: ${payload.chapterName}`;
+                else if (messageType === "ChapterDeleted") text = `Một chương học đã bị xóa.`;
+                else if (messageType === "DocumentChanged") {
+                    if (payload.action === "Upload") text = `Tài liệu mới đã tải lên: ${payload.document.title}`;
+                    else text = `Một tài liệu đã bị xóa.`;
+                }
+                else if (messageType === "UserChanged") text = `Thông tin tài khoản/quyền đã thay đổi.`;
+                else if (messageType === "AllowedEmailChanged") text = `Danh sách whitelist email đã được cập nhật.`;
+
+                Toast.fire({
+                    icon: 'info',
+                    title: text
+                });
+            }
+            
+            // Dispatch custom event to notify specific page to reload its content
+            const event = new CustomEvent("realtimeUpdate", { detail: { messageType, payload } });
+            document.dispatchEvent(event);
+        });
+
+        connection.start()
+            .then(() => console.log("SignalR connected to /notificationHub"))
+            .catch(err => console.error("SignalR Connection Error: ", err));
+    }
+</script>
+
+@await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

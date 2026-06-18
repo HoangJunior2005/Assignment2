@@ -1,0 +1,184 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace LearningDocumentSystem.Business.DTOs
+{
+    // ================================================================
+    // AUTH DTOs
+    // ================================================================
+    public class LoginDto
+    {
+        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập")]
+        [MaxLength(50)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
+        [MinLength(6, ErrorMessage = "Mật khẩu tối thiểu 6 ký tự")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+
+    public class UserDto
+    {
+        public int UserID { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public bool CanUpload { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public List<string> Roles { get; set; } = new();
+    }
+
+    public class RoleDto
+    {
+        public int RoleID { get; set; }
+        public string RoleName { get; set; } = string.Empty;
+    }
+
+    public class AllowedEmailDto
+    {
+        public int Id { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public bool IsUsed { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    // ================================================================
+    // SUBJECT DTOs
+    // ================================================================
+    public class SubjectDto
+    {
+        public int SubjectID { get; set; }
+        public string SubjectName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public int ChapterCount { get; set; }
+        public int DocumentCount { get; set; }
+    }
+
+    public class CreateSubjectDto
+    {
+        [Required(ErrorMessage = "Tên môn học không được để trống")]
+        [MaxLength(255)]
+        public string SubjectName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Mã học phần không được để trống")]
+        [MaxLength(50)]
+        [RegularExpression(@"^[A-Z0-9]+$", ErrorMessage = "Mã học phần chỉ gồm chữ hoa và số")]
+        public string SubjectCode { get; set; } = string.Empty;
+    }
+
+    public class UpdateSubjectDto : CreateSubjectDto
+    {
+        public int SubjectID { get; set; }
+    }
+
+    // ================================================================
+    // CHAPTER DTOs
+    // ================================================================
+    public class ChapterDto
+    {
+        public int ChapterID { get; set; }
+        public int SubjectID { get; set; }
+        public string SubjectName { get; set; } = string.Empty;
+        public int ChapterNumber { get; set; }
+        public string ChapterName { get; set; } = string.Empty;
+        public int DocumentCount { get; set; }
+    }
+
+    public class CreateChapterDto
+    {
+        [Required]
+        public int SubjectID { get; set; }
+
+        [Required(ErrorMessage = "Số chương không được để trống")]
+        [Range(1, 100, ErrorMessage = "Số chương từ 1-100")]
+        public int ChapterNumber { get; set; }
+
+        [Required(ErrorMessage = "Tên chương không được để trống")]
+        [MaxLength(255)]
+        public string ChapterName { get; set; } = string.Empty;
+    }
+
+    public class UpdateChapterDto : CreateChapterDto
+    {
+        public int ChapterID { get; set; }
+    }
+
+    // ================================================================
+    // DOCUMENT DTOs
+    // ================================================================
+    public class DocumentDto
+    {
+        public int DocumentID { get; set; }
+        public int ChapterID { get; set; }
+        public string ChapterName { get; set; } = string.Empty;
+        public int ChapterNumber { get; set; }
+        public int SubjectID { get; set; }
+        public string SubjectName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string FileType { get; set; } = string.Empty;
+        public string StoragePath { get; set; } = string.Empty;
+        public long FileSizeInBytes { get; set; }
+        public string IndexStatus { get; set; } = "Pending";
+        public int UploadedBy { get; set; }
+        public string UploadedByName { get; set; } = string.Empty;
+        public DateTime UploadedAt { get; set; }
+        public DateTime? IndexedAt { get; set; }
+        public int ChunkCount { get; set; }
+    }
+
+    public class DocumentDetailDto : DocumentDto
+    {
+        public List<ChunkDto> Chunks { get; set; } = new();
+    }
+
+    public class ChunkDto
+    {
+        public int ChunkID { get; set; }
+        public int ChunkIndex { get; set; }
+        public int? PageNumber { get; set; }
+        public string ContentText { get; set; } = string.Empty;
+        public bool HasEmbedding { get; set; }
+    }
+
+    public class ChatResponseDto
+    {
+        public string Answer { get; set; } = string.Empty;
+        public List<ChatSourceDto> Sources { get; set; } = new();
+    }
+
+    public class ChatSourceDto
+    {
+        public int DocumentID { get; set; }
+        public string DocumentTitle { get; set; } = string.Empty;
+        public int? PageNumber { get; set; }
+        public float SimilarityScore { get; set; }
+        public string ContentSnippet { get; set; } = string.Empty;
+    }
+
+    public class MonthlyUploadDto
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string Label => $"{Month:D2}/{Year}";
+        public int Count { get; set; }
+    }
+
+    public class DashboardDto
+    {
+        public int TotalDocuments { get; set; }
+        public int TotalChunks { get; set; }
+        public int TotalSubjects { get; set; }
+        public int TotalUsers { get; set; }
+        public int IndexedDocuments { get; set; }
+        public int PendingDocuments { get; set; }
+        public int ProcessingDocuments { get; set; }
+        public int FailedDocuments { get; set; }
+        public List<DocumentDto> RecentDocuments { get; set; } = new();
+        public List<MonthlyUploadDto> MonthlyUploads { get; set; } = new();
+        public List<MonthlyUploadDto> MonthlyRegistrations { get; set; } = new();
+    }
+}

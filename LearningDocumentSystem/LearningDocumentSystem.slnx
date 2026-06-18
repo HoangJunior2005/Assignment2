@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="LearningDocumentSystem.Business/LearningDocumentSystem.Business.csproj" />
+  <Project Path="LearningDocumentSystem.Data/LearningDocumentSystem.Data.csproj" />
+  <Project Path="LearningDocumentSystem.Web/LearningDocumentSystem.Web.csproj" />
+</Solution>

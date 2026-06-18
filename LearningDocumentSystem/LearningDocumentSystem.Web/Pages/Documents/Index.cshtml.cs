@@ -1,0 +1,85 @@
+using LearningDocumentSystem.Business.DTOs;
+using LearningDocumentSystem.Business.Services.Interfaces;
+using LearningDocumentSystem.Common.Constants;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace LearningDocumentSystem.Web.Pages.Documents
+{
+    [Authorize]
+    public class IndexModel : PageModel
+    {
+        private readonly IDocumentService _documentService;
+        private readonly ISubjectService _subjectService;
+        private readonly IChapterService _chapterService;
+
+        public IndexModel(
+            IDocumentService documentService,
+            ISubjectService subjectService,
+            IChapterService chapterService)
+        {
+            _documentService = documentService;
+            _subjectService = subjectService;
+            _chapterService = chapterService;
+        }
+
+        public IEnumerable<DocumentDto> Documents { get; set; } = [];
+        public IEnumerable<SubjectDto> Subjects { get; set; } = [];
+        public IEnumerable<ChapterDto> Chapters { get; set; } = [];
+
+        [BindProperty(SupportsGet = true)]
+        public string? Keyword { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? SubjectId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ChapterId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? Status { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int CurrentPage { get; set; } = 1;
+
+        public int TotalCount { get; set; }
+        public int TotalPages { get; set; }
+        public int PageSize => AppConstants.DefaultPageSize;
+
+        public async Task OnGetAsync()
+        {
+            if (!SubjectId.HasValue && ChapterId.HasValue)
+            {
+                var selectedChapter = await _chapterService.GetByIdAsync(ChapterId.Value);
+                if (selectedChapter != null)
+                {
+                    SubjectId = selectedChapter.SubjectID;
+                }
+            }
+
+            var (items, total) = await _documentService.GetPagedAsync(
+                Keyword, SubjectId, ChapterId, Status, CurrentPage, AppConstants.DefaultPageSize);
+
+            Documents = items;
+            TotalCount = total;
+            TotalPages = (int)Math.Ceiling(total / (double)AppConstants.DefaultPageSize);
+
+            Subjects = await _subjectService.GetAllAsync();
+            Chapters = SubjectId.HasValue
+                ? await _chapterService.GetBySubjectAsync(SubjectId.Value)
+                : [];
+        }
+
+        // AJAX handler to load chapters for a subject dropdown
+        public async Task<IActionResult> OnGetGetChaptersAsync(int subjectId)
+        {
+            var chapters = await _chapterService.GetBySubjectAsync(subjectId);
+            return new JsonResult(chapters.Select(c => new { c.ChapterID, c.ChapterName, c.ChapterNumber }));
+        }
+    }
+}

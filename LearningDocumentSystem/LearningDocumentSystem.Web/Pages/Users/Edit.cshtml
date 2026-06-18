@@ -1,0 +1,88 @@
+@page "{id:int}"
+@model EditModel
+@{
+    ViewData["Title"] = "Chỉnh sửa quyền & vai trò";
+}
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="bi bi-pencil-square me-2"></i>
+        @ViewData["Title"]
+    </h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <div class="card-custom-body">
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="UserID"/>
+                    
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted">Tên tài khoản (Email)</label>
+                        <input type="text" class="form-control" asp-for="Username" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted">Họ và tên</label>
+                        <input type="text" class="form-control" asp-for="FullName" readonly />
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="SelectedRoleId" class="form-label fw-semibold">Vai trò (Role)</label>
+                        <select asp-for="SelectedRoleId" class="form-select" id="roleSelect" onchange="toggleUploadPerm()">
+                            <option value="">— Chọn vai trò —</option>
+                            @foreach (var r in Model.Roles.Where(r => r.RoleName != "Admin"))
+                            {
+                                <option value="@r.RoleID">@r.RoleName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="SelectedRoleId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Upload Switch for Teacher role only -->
+                    <div class="mb-4" id="uploadPermissionWrapper">
+                        <label class="form-label fw-semibold d-block">Quyền upload tài liệu</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" asp-for="CanUpload" id="canUploadSwitch"/>
+                            <label class="form-check-label text-muted small ms-1" for="canUploadSwitch">Cho phép tải tài liệu lên hệ thống</label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>
+                            Lưu thay đổi
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleUploadPerm() {
+            const select = document.getElementById('roleSelect');
+            const wrapper = document.getElementById('uploadPermissionWrapper');
+            const selectedText = select.options[select.selectedIndex].text;
+            
+            if (selectedText === 'Teacher') {
+                wrapper.style.display = 'block';
+            } else {
+                wrapper.style.display = 'none';
+                document.getElementById('canUploadSwitch').checked = false;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', toggleUploadPerm);
+    </script>
+}

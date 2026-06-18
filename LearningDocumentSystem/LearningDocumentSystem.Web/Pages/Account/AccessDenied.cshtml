@@ -1,0 +1,24 @@
+@page
+@model AccessDeniedModel
+@{
+    ViewData["Title"] = "Từ chối truy cập";
+}
+
+<div class="container mt-5">
+    <div class="card border-warning shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-shield-slash-fill me-2"></i>Từ chối truy cập</h4>
+        </div>
+        <div class="card-body py-4">
+            <p class="lead">Bạn không có quyền truy cập vào trang này.</p>
+            <p>Vui lòng đăng nhập bằng tài khoản có vai trò cao hơn hoặc liên hệ quản trị viên nếu bạn tin rằng đây là một sự nhầm lẫn.</p>
+        </div>
+        <div class="card-footer bg-light text-end">
+            <a asp-page="/Index" class="btn btn-secondary me-2">Trở về Trang chủ</a>
+            <form asp-page="/Account/Logout" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">Đăng xuất & Đăng nhập lại</button>
+            </form>
+        </div>
+    </div>
+</div>

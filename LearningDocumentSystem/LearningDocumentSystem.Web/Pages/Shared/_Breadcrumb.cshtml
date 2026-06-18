@@ -1,0 +1,22 @@
+@{
+    var pagePath = ViewContext.RouteData.Values["page"]?.ToString();
+    var parts = pagePath?.Split('/', System.StringSplitOptions.RemoveEmptyEntries);
+}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a asp-page="/Index">Trang chủ</a></li>
+        @if (parts != null && parts.Length > 0 && !parts[0].Equals("Index", System.StringComparison.OrdinalIgnoreCase))
+        {
+            var folder = parts[0];
+            if (parts.Length > 1 && !parts[1].Equals("Index", System.StringComparison.OrdinalIgnoreCase))
+            {
+                <li class="breadcrumb-item text-capitalize"><a asp-page="/@folder/Index">@folder</a></li>
+                <li class="breadcrumb-item active">@ViewData["Title"]</li>
+            }
+            else
+            {
+                <li class="breadcrumb-item active">@ViewData["Title"]</li>
+            }
+        }
+    </ol>
+</nav>

@@ -1,0 +1,26 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<div class="container mt-5">
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Đã xảy ra lỗi</h4>
+        </div>
+        <div class="card-body py-4">
+            <p class="lead">Hệ thống đã xảy ra lỗi không mong muốn khi xử lý yêu cầu của bạn.</p>
+            <p>Vui lòng thử lại sau hoặc liên hệ với người quản trị hệ thống nếu lỗi tiếp tục xuất hiện.</p>
+            @if (Model.ShowRequestId)
+            {
+                <div class="alert alert-secondary mt-3 mb-0">
+                    <strong>Request ID:</strong> <code>@Model.RequestId</code>
+                </div>
+            }
+        </div>
+        <div class="card-footer bg-light text-end">
+            <a asp-page="/Index" class="btn btn-primary">Quay lại Trang chủ</a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,39 @@
+@page "{id:int}"
+@model DeleteModel
+@{
+    ViewData["Title"] = "Xóa tài khoản người dùng";
+}
+
+<div class="page-header text-center">
+    <h1 class="page-title text-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Xác nhận xóa tài khoản
+    </h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card-custom border-danger">
+            <div class="card-custom-body text-center py-4">
+                <p class="lead">Bạn có chắc chắn muốn xóa tài khoản người dùng sau đây?</p>
+                <div class="alert alert-secondary my-4">
+                    <div class="mb-2"><strong>Tài khoản (Email):</strong> @Model.Username</div>
+                    <div><strong>Họ và tên:</strong> @Model.FullName</div>
+                </div>
+                <p class="text-muted small">Cảnh báo: Hành động này không thể phục hồi. Tất cả thông tin liên quan đến người dùng này sẽ bị ảnh hưởng.</p>
+
+                <form method="post" class="mt-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="UserID" />
+                    
+                    <div class="d-flex justify-content-center gap-3">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash me-1"></i> Đồng ý xóa
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-lg">Hủy bỏ</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

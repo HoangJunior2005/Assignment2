@@ -1,0 +1,147 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Chương học";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="bi bi-journal-bookmark-fill me-2"></i>Chương học</h1>
+        <p class="page-subtitle">Quản lý các chương học trong môn học</p>
+    </div>
+    @if (User.IsInRole("Teacher"))
+    {
+        <a asp-page="/Chapters/Create" asp-route-subjectId="@Model.SubjectId" class="btn btn-primary btn-action">
+            <i class="bi bi-plus-circle me-2"></i>Thêm chương
+        </a>
+    }
+</div>
+
+<!-- Filter by Subject -->
+<div class="card-custom mb-4">
+    <div class="card-custom-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-lg-4 col-md-6">
+                <label class="form-label small fw-semibold text-muted">Lọc theo môn học</label>
+                <select name="subjectId" class="form-select" onchange="this.form.submit()">
+                    <option value="">— Tất cả môn học —</option>
+                    @foreach (var s in Model.Subjects)
+                    {
+                        <option value="@s.SubjectID" selected="@(Model.SubjectId == s.SubjectID)">
+                            [@s.SubjectCode] @s.SubjectName
+                        </option>
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card-custom">
+    <div class="card-custom-body p-0">
+        @if (!Model.Chapters.Any())
+        {
+            <div class="empty-state py-5">
+                <i class="bi bi-collection"></i>
+                <p>Chưa có chương học nào</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-clean mb-0 align-middle">
+                    <thead class="table-light text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                        <tr>
+                            <th>STT</th>
+                            <th>Tên chương</th>
+                            <th>Môn học</th>
+                            <th>Số tài liệu</th>
+                            <th class="text-end" style="width: 150px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Chapters.OrderBy(x => x.ChapterNumber))
+                        {
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border">
+                                        Chương @c.ChapterNumber
+                                    </span>
+                                </td>
+                                <td class="fw-semibold">@c.ChapterName</td>
+                                <td class="text-muted">@c.SubjectName</td>
+                                <td>
+                                    <a asp-page="/Documents/Index" asp-route-chapterId="@c.ChapterID"
+                                       class="badge bg-secondary-subtle text-secondary border text-decoration-none">
+                                        <i class="bi bi-file-earmark me-1"></i>@c.DocumentCount tài liệu
+                                    </a>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-page="/Chapters/Details" asp-route-id="@c.ChapterID" class="btn btn-outline-info" title="Chi tiết">
+                                            <i class="bi bi-info-circle-fill"></i>
+                                        </a>
+                                        @if (User.IsInRole("Teacher"))
+                                        {
+                                            <a asp-page="/Chapters/Edit" asp-route-id="@c.ChapterID"
+                                               class="btn btn-outline-warning" title="Sửa">
+                                                 <i class="bi bi-pencil-fill"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger"
+                                                    onclick="confirmDelete(@c.ChapterID, '@c.ChapterName')" title="Xóa">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 bg-danger text-white justify-content-center position-relative">
+                <h5 class="modal-title m-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close btn-close-white position-absolute" style="right: 1.25rem; top: 1.25rem;" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+                <p class="mb-0">Xóa chương: <strong class="text-danger" id="delName"></strong>?</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+                <form id="delForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-1"></i>Xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function confirmDelete(id, name) {
+        document.getElementById('delName').textContent = name;
+        document.getElementById('delForm').action = '/Chapters/Delete/' + id;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    // Realtime update listener to reload chapters list
+    document.addEventListener("realtimeUpdate", function(e) {
+        const type = e.detail.messageType;
+        if (type.startsWith("Chapter")) {
+            console.log("Realtime event matched in Chapters Index. Reloading...");
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+    });
+</script>
+}

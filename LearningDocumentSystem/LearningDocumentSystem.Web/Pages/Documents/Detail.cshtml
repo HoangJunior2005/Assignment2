@@ -1,0 +1,185 @@
+@page "{id:int}"
+@model DetailModel
+@using LearningDocumentSystem.Common.Helpers
+@{
+    ViewData["Title"] = Model.Document.Title;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.Document.Title</h1>
+        <p class="page-subtitle">
+            <a asp-page="/Subjects/Index">@Model.Document.SubjectName</a>
+            <i class="bi bi-chevron-right mx-1 small"></i>
+            Chương @Model.Document.ChapterNumber: @Model.Document.ChapterName
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-page="./Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </a>
+        <a asp-page="./Download" asp-route-id="@Model.Document.DocumentID" class="btn btn-primary">
+            <i class="bi bi-cloud-download-fill me-1"></i>Tải xuống
+        </a>
+        @if (User.IsInRole("Teacher"))
+        {
+            <button type="button" class="btn btn-danger"
+                    onclick="confirmDelete(@Model.Document.DocumentID, '@Model.Document.Title')">
+                <i class="bi bi-trash-fill me-1"></i>Xóa
+            </button>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Document Info -->
+    <div class="col-lg-4">
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5><i class="bi bi-info-circle me-2"></i>Thông tin tài liệu</h5>
+            </div>
+            <div class="card-custom-body">
+                <!-- File Type Icon -->
+                <div class="doc-detail-icon text-center mb-4">
+                    @{
+                        var icon = Model.Document.FileType switch {
+                            "pdf"  => "bi-file-earmark-pdf-fill text-danger",
+                            "docx" => "bi-file-earmark-word-fill text-primary",
+                            "pptx" => "bi-file-earmark-ppt-fill text-warning",
+                            _      => "bi-file-earmark text-secondary"
+                        };
+                    }
+                    <i class="bi @icon" style="font-size: 4rem;"></i>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary fs-6">@Model.Document.FileType.ToUpper()</span>
+                    </div>
+                </div>
+
+                <dl class="doc-detail-list">
+                    <dt><i class="bi bi-tag me-1"></i>Tiêu đề</dt>
+                    <dd>@Model.Document.Title</dd>
+
+                    <dt><i class="bi bi-journal-bookmark me-1"></i>Môn học</dt>
+                    <dd>[@Model.Document.SubjectCode] @Model.Document.SubjectName</dd>
+
+                    <dt><i class="bi bi-collection me-1"></i>Chương</dt>
+                    <dd>Chương @Model.Document.ChapterNumber: @Model.Document.ChapterName</dd>
+
+                    <dt><i class="bi bi-hdd me-1"></i>Kích thước</dt>
+                    <dd>@FileHelper.FormatSize(Model.Document.FileSizeInBytes)</dd>
+
+                    <dt><i class="bi bi-person-fill me-1"></i>Upload bởi</dt>
+                    <dd>@Model.Document.UploadedByName</dd>
+
+                    <dt><i class="bi bi-calendar me-1"></i>Ngày upload</dt>
+                    <dd>@Model.Document.UploadedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                    <dt><i class="bi bi-check2-circle me-1"></i>Thời gian index</dt>
+                    <dd>@(Model.Document.IndexedAt.HasValue ? Model.Document.IndexedAt.Value.ToString("dd/MM/yyyy HH:mm") : "—")</dd>
+
+                    <dt><i class="bi bi-activity me-1"></i>Trạng thái</dt>
+                    <dd>
+                        @{
+                            var (sc2, si2, st2) = Model.Document.IndexStatus switch {
+                                "Indexed"    => ("success", "check-circle-fill", "Đã Index"),
+                                "Processing" => ("info",    "hourglass-split",   "Đang xử lý"),
+                                "Failed"     => ("danger",  "x-circle-fill",     "Thất bại"),
+                                _            => ("warning", "clock",              "Chờ xử lý")
+                            };
+                        }
+                        <span class="badge bg-@sc2 rounded-pill px-3 py-2">
+                            <i class="bi bi-@si2 me-1"></i>@st2
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div><!-- end col-lg-4 -->
+
+    <!-- Chunks -->
+    <div class="col-lg-8">
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5>
+                    <i class="bi bi-layers-fill me-2"></i>
+                    Document Chunks
+                    <span class="badge bg-primary ms-2">@Model.Document.ChunkCount</span>
+                </h5>
+                <span class="text-muted small">Nội dung tách để phục vụ AI/RAG</span>
+            </div>
+            <div class="card-custom-body" style="max-height: 70vh; overflow-y: auto;">
+                @if (!Model.Document.Chunks.Any())
+                {
+                    <div class="empty-state py-5">
+                        <i class="bi bi-layers"></i>
+                        <p>Chưa có chunks nào được tạo</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var chunk in Model.Document.Chunks)
+                    {
+                        <div class="chunk-item">
+                            <div class="chunk-header">
+                                <div class="chunk-meta">
+                                    <span class="chunk-index">#@(chunk.ChunkIndex + 1)</span>
+                                    @if (chunk.PageNumber.HasValue)
+                                    {
+                                        <span class="chunk-page">
+                                            <i class="bi bi-file-text me-1"></i>Trang @chunk.PageNumber
+                                        </span>
+                                    }
+                                </div>
+                                <div class="chunk-badges">
+                                    @if (chunk.HasEmbedding)
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                            <i class="bi bi-cpu-fill me-1"></i>Embedded
+                                        </span>
+                                    }
+                                    <span class="badge bg-secondary-subtle text-secondary">
+                                        @chunk.ContentText.Length ký tự
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="chunk-content">@chunk.ContentText</div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 bg-danger text-white justify-content-center position-relative">
+                <h5 class="modal-title m-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close btn-close-white position-absolute" style="right: 1.25rem; top: 1.25rem;" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+                <p>Bạn có chắc muốn xóa tài liệu: <strong class="text-danger" id="deleteDocTitle"></strong>?</p>
+                <p class="text-muted small mb-0">Thao tác này sẽ xóa tất cả @Model.Document.ChunkCount chunks và embeddings.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+                <form id="deleteForm" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill me-1"></i>Xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function confirmDelete(id, title) {
+        document.getElementById('deleteDocTitle').textContent = title;
+        document.getElementById('deleteForm').action = '/Documents/Delete/' + id;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+</script>
+}
