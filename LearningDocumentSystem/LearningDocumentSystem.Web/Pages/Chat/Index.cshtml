@@ -813,12 +813,19 @@
         });
     }
 
-    // ── Load sessions on startup ──────────────────────────────────
     async function loadUserSessions() {
         try {
             const res = await fetch('/Chat?handler=Sessions');
             const data = await res.json();
             renderSessionList(data);
+            
+            // Đồng bộ lại tiêu đề phiên hiện tại ở Header nếu tiêu đề đã đổi ở backend
+            if (activeSessionId) {
+                const activeSess = data.find(s => s.sessionID === activeSessionId);
+                if (activeSess) {
+                    document.getElementById('activeSessionTitle').textContent = activeSess.title;
+                }
+            }
         } catch(e) {
             console.error('Failed to load sessions', e);
         }
