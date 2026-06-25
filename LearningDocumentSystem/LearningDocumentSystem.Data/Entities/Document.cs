@@ -41,6 +41,10 @@ namespace LearningDocumentSystem.Entities.Models
         [MaxLength(64)]
         public string? FileHash { get; set; }
 
+        [Required]
+        [MaxLength(255)]
+        public string OriginalFileName { get; set; } = string.Empty;
+
         // Navigation properties
         public virtual Chapter Chapter { get; set; } = null!;
         public virtual User UploadedByUser { get; set; } = null!;

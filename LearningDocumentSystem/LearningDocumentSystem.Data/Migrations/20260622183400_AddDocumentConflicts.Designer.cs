@@ -4,6 +4,7 @@ using LearningDocumentSystem.Data.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearningDocumentSystem.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622183400_AddDocumentConflicts")]
+    partial class AddDocumentConflicts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,11 +199,6 @@ namespace LearningDocumentSystem.Data.Migrations
                     b.Property<DateTime?>("IndexedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<string>("StoragePath")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -227,10 +225,6 @@ namespace LearningDocumentSystem.Data.Migrations
 
                     b.HasIndex("FileHash")
                         .HasDatabaseName("IX_Documents_FileHash");
-
-                    b.HasIndex("OriginalFileName")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Documents_OriginalFileName");
 
                     b.HasIndex("UploadedBy")
                         .HasDatabaseName("IX_Documents_UploadedBy");

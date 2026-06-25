@@ -63,6 +63,11 @@ namespace LearningDocumentSystem.Business.Mapping
             CreateMap<DocumentChunk, ChunkDto>()
                 .ForMember(dest => dest.HasEmbedding,
                     opt => opt.MapFrom(src => src.Embedding != null));
+
+            // DocumentConflict
+            CreateMap<DocumentConflict, DocumentConflictDto>()
+                .ForMember(dest => dest.ConflictingDocumentTitle,
+                    opt => opt.MapFrom(src => src.ConflictingDocument.Title));
         }
     }
 }
