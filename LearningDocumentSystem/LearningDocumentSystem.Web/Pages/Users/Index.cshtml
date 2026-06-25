@@ -117,7 +117,8 @@
                                                                    value="@subject.SubjectID" 
                                                                    id="subject_@(u.UserID)_@(subject.SubjectID)"
                                                                    data-user-id="@u.UserID"
-                                                                   @(isAssigned ? "checked" : "")>
+                                                                   @(isAssigned ? "checked" : "")
+                                                                   @(isAssignedToOther ? "disabled" : "")>
                                                             <label class="form-check-label @(isAssignedToOther ? "text-muted" : "")" for="subject_@(u.UserID)_@(subject.SubjectID)" style="font-size: 0.85rem;">
                                                                 @subject.SubjectName <span style="font-size: 0.75rem;">@assignedToText</span>
                                                             </label>
