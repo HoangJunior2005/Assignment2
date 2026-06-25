@@ -20,6 +20,8 @@ namespace LearningDocumentSystem.Data.Repositories.Implementations
         private IDocumentChunkRepository? _documentChunks;
         private IEmbeddingRepository? _embeddings;
         private IAllowedEmailRepository? _allowedEmails;
+        private IChatSessionRepository? _chatSessions;
+        private IDocumentConflictRepository? _documentConflicts;
 
         public UnitOfWork(AppDbContext context)
         {
@@ -35,6 +37,8 @@ namespace LearningDocumentSystem.Data.Repositories.Implementations
         public IDocumentChunkRepository DocumentChunks => _documentChunks ??= new DocumentChunkRepository(_context);
         public IEmbeddingRepository Embeddings => _embeddings ??= new EmbeddingRepository(_context);
         public IAllowedEmailRepository AllowedEmails => _allowedEmails ??= new AllowedEmailRepository(_context);
+        public IChatSessionRepository ChatSessions => _chatSessions ??= new ChatSessionRepository(_context);
+        public IDocumentConflictRepository DocumentConflicts => _documentConflicts ??= new DocumentConflictRepository(_context);
 
         public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
 

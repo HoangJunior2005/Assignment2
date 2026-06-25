@@ -13,6 +13,8 @@ namespace LearningDocumentSystem.Data.Repositories.Interfaces
         IDocumentChunkRepository DocumentChunks { get; }
         IEmbeddingRepository Embeddings { get; }
         IAllowedEmailRepository AllowedEmails { get; }
+        IChatSessionRepository ChatSessions { get; }
+        IDocumentConflictRepository DocumentConflicts { get; }
 
         Task<int> SaveChangesAsync();
         Task BeginTransactionAsync();

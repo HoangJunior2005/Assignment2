@@ -17,6 +17,9 @@ namespace LearningDocumentSystem.Data.DbContexts
         public DbSet<DocumentChunk> DocumentChunks { get; set; } = null!;
         public DbSet<Embedding> Embeddings { get; set; } = null!;
         public DbSet<AllowedEmail> AllowedEmails { get; set; } = null!;
+        public DbSet<ChatSession> ChatSessions { get; set; } = null!;
+        public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
+        public DbSet<DocumentConflict> DocumentConflicts { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -138,6 +141,7 @@ namespace LearningDocumentSystem.Data.DbContexts
                 entity.Property(d => d.UploadedAt).HasDefaultValueSql("GETDATE()");
                 entity.Property(d => d.IndexedAt).HasColumnType("datetime2");
                 entity.Property(d => d.FileHash).HasMaxLength(64).IsRequired(false);
+                entity.Property(d => d.OriginalFileName).IsRequired().HasMaxLength(255);
 
                 // FK → Chapters (CASCADE)
                 entity.HasOne(d => d.Chapter)
@@ -154,6 +158,9 @@ namespace LearningDocumentSystem.Data.DbContexts
                 entity.HasIndex(d => d.ChapterID).HasDatabaseName("IX_Documents_ChapterID");
                 entity.HasIndex(d => d.UploadedBy).HasDatabaseName("IX_Documents_UploadedBy");
                 entity.HasIndex(d => d.FileHash).HasDatabaseName("IX_Documents_FileHash");
+                entity.HasIndex(d => d.OriginalFileName)
+                    .IsUnique()
+                    .HasDatabaseName("IX_Documents_OriginalFileName");
             });
 
             // ============================================================
@@ -194,6 +201,89 @@ namespace LearningDocumentSystem.Data.DbContexts
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => e.ChunkID).IsUnique();
+            });
+
+            // ============================================================
+            // BẢNG ChatSessions
+            // ============================================================
+            modelBuilder.Entity<ChatSession>(entity =>
+            {
+                entity.ToTable("ChatSessions");
+                entity.HasKey(cs => cs.SessionID);
+                entity.Property(cs => cs.SessionID).UseIdentityColumn();
+                entity.Property(cs => cs.Title).IsRequired().HasMaxLength(255).IsUnicode(true);
+                entity.Property(cs => cs.CreatedAt).HasDefaultValueSql("GETDATE()");
+                entity.Property(cs => cs.UpdatedAt).HasDefaultValueSql("GETDATE()");
+
+                // FK → Users (RESTRICT - không cascade xóa user sẽ giữ session)
+                entity.HasOne(cs => cs.User)
+                    .WithMany(u => u.ChatSessions)
+                    .HasForeignKey(cs => cs.UserID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(cs => cs.UserID).HasDatabaseName("IX_ChatSessions_UserID");
+                entity.HasIndex(cs => cs.UpdatedAt).HasDatabaseName("IX_ChatSessions_UpdatedAt");
+            });
+
+            // ============================================================
+            // BẢNG ChatMessages
+            // ============================================================
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.ToTable("ChatMessages");
+                entity.HasKey(cm => cm.MessageID);
+                entity.Property(cm => cm.MessageID).UseIdentityColumn();
+                entity.Property(cm => cm.Role).IsRequired().HasMaxLength(20);
+                entity.Property(cm => cm.Content).IsRequired().HasColumnType("nvarchar(max)");
+                entity.Property(cm => cm.SourcesJson).HasColumnType("nvarchar(max)").IsRequired(false);
+                entity.Property(cm => cm.CreatedAt).HasDefaultValueSql("GETDATE()");
+
+                // FK → ChatSessions (CASCADE)
+                entity.HasOne(cm => cm.Session)
+                    .WithMany(cs => cs.Messages)
+                    .HasForeignKey(cm => cm.SessionID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(cm => cm.SessionID).HasDatabaseName("IX_ChatMessages_SessionID");
+            });
+
+            // ============================================================
+            // BẢNG DocumentConflicts
+            // ============================================================
+            modelBuilder.Entity<DocumentConflict>(entity =>
+            {
+                entity.ToTable("DocumentConflicts");
+                entity.HasKey(dc => dc.ConflictID);
+                entity.Property(dc => dc.ConflictID).UseIdentityColumn();
+                entity.Property(dc => dc.Description).IsRequired().HasColumnType("nvarchar(max)");
+                entity.Property(dc => dc.DetectedAt).HasDefaultValueSql("GETDATE()");
+
+                // FK → Documents (DocumentID)
+                entity.HasOne(dc => dc.Document)
+                    .WithMany()
+                    .HasForeignKey(dc => dc.DocumentID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK → Documents (ConflictingDocumentID)
+                entity.HasOne(dc => dc.ConflictingDocument)
+                    .WithMany()
+                    .HasForeignKey(dc => dc.ConflictingDocumentID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK → DocumentChunks (ChunkID)
+                entity.HasOne(dc => dc.Chunk)
+                    .WithMany()
+                    .HasForeignKey(dc => dc.ChunkID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK → DocumentChunks (ConflictingChunkID)
+                entity.HasOne(dc => dc.ConflictingChunk)
+                    .WithMany()
+                    .HasForeignKey(dc => dc.ConflictingChunkID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(dc => dc.DocumentID).HasDatabaseName("IX_DocumentConflicts_DocumentID");
+                entity.HasIndex(dc => dc.ConflictingDocumentID).HasDatabaseName("IX_DocumentConflicts_ConflictingDocumentID");
             });
         }
     }

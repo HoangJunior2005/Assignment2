@@ -9,6 +9,8 @@ using LearningDocumentSystem.Entities.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.IO;
+using System.Text.Json;
 
 namespace LearningDocumentSystem.Business.Services.Implementations
 {
@@ -19,6 +21,7 @@ namespace LearningDocumentSystem.Business.Services.Implementations
         private readonly IFileService      _fileService;
         private readonly IChunkingService  _chunkingService;
         private readonly IEmbeddingService _embeddingService;
+        private readonly IGeminiService    _geminiService;
         private readonly ILogger<DocumentService> _logger;
         private readonly INotificationService _notificationService;
 
@@ -31,6 +34,7 @@ namespace LearningDocumentSystem.Business.Services.Implementations
             IFileService fileService,
             IChunkingService chunkingService,
             IEmbeddingService embeddingService,
+            IGeminiService geminiService,
             ILogger<DocumentService> logger,
             INotificationService notificationService)
         {
@@ -39,6 +43,7 @@ namespace LearningDocumentSystem.Business.Services.Implementations
             _fileService      = fileService;
             _chunkingService  = chunkingService;
             _embeddingService = embeddingService;
+            _geminiService    = geminiService;
             _logger           = logger;
             _notificationService = notificationService;
         }
@@ -60,6 +65,10 @@ namespace LearningDocumentSystem.Business.Services.Implementations
 
             var dto = _mapper.Map<DocumentDetailDto>(doc);
             dto.Chunks = _mapper.Map<List<ChunkDto>>(doc.Chunks);
+
+            var conflicts = await _uow.DocumentConflicts.GetByDocumentIdAsync(id);
+            dto.Conflicts = _mapper.Map<List<DocumentConflictDto>>(conflicts);
+
             return dto;
         }
 
@@ -70,21 +79,45 @@ namespace LearningDocumentSystem.Business.Services.Implementations
             var chapter = await _uow.Chapters.GetByIdAsync(chapterId)
                 ?? throw new NotFoundException("Chapter", chapterId);
 
+            // --- Validate sớm (chỉ query DB, chưa lưu file / chưa gọi AI) ---
+            var normalizedTitle = title.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(normalizedTitle))
+                throw new InvalidOperationException("Tiêu đề tài liệu không được để trống.");
+
+            var isDuplicateTitle = await _uow.Documents.AnyAsync(
+                d => d.Title.ToLower() == normalizedTitle);
+            if (isDuplicateTitle)
+            {
+                throw new InvalidOperationException(AppMessages.MsgDuplicateTitle);
+            }
+
+            var originalFileName = Path.GetFileName(file.FileName);
+            var normalizedFileName = originalFileName.ToLowerInvariant();
+
+            var isDuplicateName = await _uow.Documents.AnyAsync(
+                d => d.OriginalFileName.ToLower() == normalizedFileName);
+            if (isDuplicateName)
+            {
+                throw new InvalidOperationException(AppMessages.MsgDuplicateFileName);
+            }
+
             // Tính toán mã băm SHA256 của tệp tin tải lên
             var hash = await ComputeFileHashAsync(file);
 
-            // Kiểm tra trùng lặp tệp
+            // Kiểm tra trùng lặp nội dung tệp
             var isDuplicate = await _uow.Documents.AnyAsync(d => d.FileHash == hash);
             if (isDuplicate)
             {
                 throw new InvalidOperationException("Tài liệu này đã được tải lên hệ thống trước đó (trùng khớp nội dung tệp tin).");
             }
 
+            // --- Từ đây trở đi mới bắt đầu xử lý nặng: lưu file, chunk, embedding, Gemini conflict scan ---
+            string? storageName = null;
             // Step 1: Lưu file vật lý
             await _uow.BeginTransactionAsync();
             try
             {
-                var storageName = await _fileService.SaveFileAsync(file, _uploadPath);
+                storageName = await _fileService.SaveFileAsync(file, _uploadPath);
 
                 // Step 2: Tạo Document record
                 var document = new Document
@@ -95,9 +128,10 @@ namespace LearningDocumentSystem.Business.Services.Implementations
                     StoragePath    = storageName,
                     FileSizeInBytes = file.Length,
                     IndexStatus    = AppConstants.StatusPending,
-                    UploadedBy     = uploadedByUserId,
-                    UploadedAt     = DateTime.UtcNow,
-                    FileHash       = hash
+                    UploadedBy       = uploadedByUserId,
+                    UploadedAt       = DateTime.UtcNow,
+                    FileHash         = hash,
+                    OriginalFileName = originalFileName
                 };
                 await _uow.Documents.AddAsync(document);
                 await _uow.SaveChangesAsync();
@@ -141,7 +175,21 @@ namespace LearningDocumentSystem.Business.Services.Implementations
                 }
                 await _uow.Embeddings.AddRangeAsync(embeddings);
 
-                // Step 7: Cập nhật status → Indexed
+                // Step 7: Quét mâu thuẫn kiến thức bằng AI (Cấp độ 4)
+                try
+                {
+                    await CheckForConflictsAsync(document, chapter.SubjectID, chunkEntities, embeddings);
+                }
+                catch (InvalidOperationException)
+                {
+                    throw; // Rethrow to abort transaction and reject upload
+                }
+                catch (Exception conflictEx)
+                {
+                    _logger.LogError(conflictEx, "Unexpected error scanning document conflicts for document {DocId}.", document.DocumentID);
+                }
+
+                // Step 8: Cập nhật status → Indexed
                 await _uow.Documents.UpdateStatusAsync(document.DocumentID, AppConstants.StatusIndexed);
                 await _uow.SaveChangesAsync();
 
@@ -160,6 +208,14 @@ namespace LearningDocumentSystem.Business.Services.Implementations
             catch (Exception ex)
             {
                 await _uow.RollbackAsync();
+                try
+                {
+                    if (!string.IsNullOrEmpty(storageName))
+                    {
+                        _fileService.DeleteFile(storageName, _uploadPath);
+                    }
+                }
+                catch { /* ignore physical file deletion errors during rollback */ }
                 _logger.LogError(ex, "Upload failed for: {Title}", title);
                 throw;
             }
@@ -172,6 +228,10 @@ namespace LearningDocumentSystem.Business.Services.Implementations
 
             // Xóa file vật lý
             _fileService.DeleteFile(doc.StoragePath, _uploadPath);
+
+            // Xóa các mâu thuẫn liên quan để tránh khóa ngoại
+            var conflicts = await _uow.DocumentConflicts.FindAsync(dc => dc.DocumentID == id || dc.ConflictingDocumentID == id);
+            _uow.DocumentConflicts.RemoveRange(conflicts);
 
             _uow.Documents.Remove(doc);
             await _uow.SaveChangesAsync();
@@ -254,6 +314,86 @@ namespace LearningDocumentSystem.Business.Services.Implementations
             using var stream = file.OpenReadStream();
             var hashBytes = await sha256.ComputeHashAsync(stream);
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        private async Task CheckForConflictsAsync(Document newDoc, int subjectId, List<DocumentChunk> newChunks, List<Embedding> newEmbeddings)
+        {
+            // Lấy toàn bộ chunk của các tài liệu khác thuộc CÙNG MÔN HỌC để so sánh
+            var existingChunks = await _uow.DocumentChunks.GetChunksForRAGAsync(subjectId, null);
+            
+            // Loại bỏ các chunk thuộc chính tài liệu mới upload
+            existingChunks = existingChunks.Where(ec => ec.DocumentID != newDoc.DocumentID).ToList();
+
+            if (!existingChunks.Any()) return;
+
+            var conflictsList = new List<string>();
+
+            foreach (var newChunk in newChunks)
+            {
+                var newEmb = newEmbeddings.FirstOrDefault(e => e.ChunkID == newChunk.ChunkID);
+                if (newEmb == null) continue;
+
+                var newVector = JsonSerializer.Deserialize<float[]>(newEmb.VectorData);
+                if (newVector == null) continue;
+
+                // Tìm top 3 chunk tương đồng nhất
+                var candidateChunks = existingChunks
+                    .Select(ec => {
+                        float[]? ecVector = null;
+                        if (ec.Embedding != null && !string.IsNullOrWhiteSpace(ec.Embedding.VectorData))
+                        {
+                            try { ecVector = JsonSerializer.Deserialize<float[]>(ec.Embedding.VectorData); }
+                            catch { /* ignore */ }
+                        }
+                        float score = ecVector != null ? DotProduct(newVector, ecVector) : 0f;
+                        return new { Chunk = ec, Score = score };
+                    })
+                    .Where(x => x.Score >= 0.15f) // Ngưỡng tương đồng ngữ nghĩa
+                    .OrderByDescending(x => x.Score)
+                    .Take(3)
+                    .ToList();
+
+                foreach (var candidate in candidateChunks)
+                {
+                    var oldChunk = candidate.Chunk;
+                    
+                    string prompt = $@"
+Bạn là trợ lý học thuật kiểm duyệt thông tin tài liệu.
+Nhiệm vụ của bạn là so sánh hai đoạn văn bản dưới đây và xác định xem chúng có chứa bất kỳ mâu thuẫn logic nào hoặc thông tin trái ngược nhau hay không (ví dụ: mâu thuẫn về ngày tháng, công thức, số liệu, định nghĩa hoặc quy chế học vụ).
+
+Đoạn văn bản A (Tài liệu hiện tại - {oldChunk.Document.Title}):
+""{oldChunk.ContentText}""
+
+Đoạn văn bản B (Tài liệu mới tải lên - {newDoc.Title}):
+""{newChunk.ContentText}""
+
+Quy tắc trả về:
+- Nếu KHÔNG CÓ mâu thuẫn thông tin (các thông tin bổ trợ cho nhau hoặc không liên quan), chỉ trả về đúng từ: ""NO_CONFLICT""
+- Nếu CÓ mâu thuẫn thông tin, hãy giải thích ngắn gọn điểm mâu thuẫn (Ví dụ: 'Tài liệu cũ ghi lịch thi là 24/06 nhưng tài liệu mới lại ghi lịch thi là 25/06'). Không giải thích dài dòng quá 3 câu.";
+
+
+                    string analysisResult = await _geminiService.GenerateDirectAnswerAsync(prompt);
+
+                    if (!string.IsNullOrWhiteSpace(analysisResult) && !analysisResult.Contains("NO_CONFLICT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        conflictsList.Add($"Mâu thuẫn với tài liệu \"{oldChunk.Document.Title}\": {analysisResult.Trim()}");
+                    }
+                }
+            }
+
+            if (conflictsList.Any())
+            {
+                throw new InvalidOperationException("Phát hiện mâu thuẫn kiến thức! " + string.Join(" | ", conflictsList));
+            }
+        }
+
+        private static float DotProduct(float[] a, float[] b)
+        {
+            float sum = 0f;
+            int len = Math.Min(a.Length, b.Length);
+            for (int i = 0; i < len; i++)
+                sum += a[i] * b[i];
+            return sum;
         }
     }
 }

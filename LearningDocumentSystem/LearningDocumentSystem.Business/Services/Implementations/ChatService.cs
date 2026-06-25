@@ -285,5 +285,176 @@ namespace LearningDocumentSystem.Business.Services.Implementations
 
             return stringBuilder.ToString().Normalize(System.Text.NormalizationForm.FormC);
         }
+
+        // ================================================================
+        // SESSION MANAGEMENT
+        // ================================================================
+
+        public async Task<ChatSessionDto> CreateSessionAsync(int userId, string? title = null, int? subjectId = null)
+        {
+            var session = new Entities.Models.ChatSession
+            {
+                UserID = userId,
+                Title = string.IsNullOrWhiteSpace(title) ? "Phiên hội thoại mới" : title.Trim(),
+                SubjectId = subjectId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _uow.ChatSessions.AddAsync(session);
+            await _uow.SaveChangesAsync();
+
+            return new ChatSessionDto
+            {
+                SessionID = session.SessionID,
+                Title = session.Title,
+                SubjectId = session.SubjectId,
+                CreatedAt = DateTime.SpecifyKind(session.CreatedAt, DateTimeKind.Utc),
+                UpdatedAt = DateTime.SpecifyKind(session.UpdatedAt, DateTimeKind.Utc),
+                MessageCount = 0
+            };
+        }
+
+        public async Task<IEnumerable<ChatSessionDto>> GetUserSessionsAsync(int userId)
+        {
+            var sessions = await _uow.ChatSessions.GetSessionsByUserAsync(userId);
+            return sessions.Select(s =>
+            {
+                var lastMsg = s.Messages?
+                    .OrderByDescending(m => m.CreatedAt)
+                    .FirstOrDefault();
+
+                string? preview = null;
+                if (lastMsg != null)
+                {
+                    preview = lastMsg.Content;
+                    if (preview.Length > 80)
+                    {
+                        preview = preview[..80] + "...";
+                    }
+                }
+
+                return new ChatSessionDto
+                {
+                    SessionID = s.SessionID,
+                    Title = s.Title,
+                    SubjectId = s.SubjectId,
+                    CreatedAt = DateTime.SpecifyKind(s.CreatedAt, DateTimeKind.Utc),
+                    UpdatedAt = DateTime.SpecifyKind(s.UpdatedAt, DateTimeKind.Utc),
+                    MessageCount = s.Messages?.Count ?? 0,
+                    LastMessagePreview = preview
+                };
+            });
+        }
+
+        public async Task<IEnumerable<ChatMessageDto>> GetSessionMessagesAsync(int sessionId, int userId)
+        {
+            var session = await _uow.ChatSessions.GetSessionWithMessagesAsync(sessionId, userId);
+            if (session == null) return Enumerable.Empty<ChatMessageDto>();
+
+            return session.Messages.Select(m =>
+            {
+                List<ChatSourceDto> sources = new();
+                if (!string.IsNullOrWhiteSpace(m.SourcesJson))
+                {
+                    try 
+                    { 
+                        sources = JsonSerializer.Deserialize<List<ChatSourceDto>>(
+                            m.SourcesJson, 
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        ) ?? new(); 
+                    }
+                    catch { /* ignore malformed JSON */ }
+                }
+                return new ChatMessageDto
+                {
+                    MessageID = m.MessageID,
+                    Role = m.Role,
+                    Content = m.Content,
+                    Sources = sources,
+                    CreatedAt = DateTime.SpecifyKind(m.CreatedAt, DateTimeKind.Utc)
+                };
+            });
+        }
+
+        public async Task SaveMessagesAsync(int sessionId, string userContent, string assistantContent, List<ChatSourceDto>? sources)
+        {
+            // Auto rename session if it has default title
+            var session = await _uow.ChatSessions.FirstOrDefaultAsync(s => s.SessionID == sessionId);
+            if (session != null && session.Title == "Phiên hội thoại mới")
+            {
+                var words = userContent.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var autoTitle = string.Join(" ", words.Take(6));
+                if (words.Length > 6) autoTitle += "...";
+                
+                if (!string.IsNullOrWhiteSpace(autoTitle))
+                {
+                    session.Title = autoTitle.Trim();
+                    _uow.ChatSessions.Update(session);
+                }
+            }
+
+            var userMsg = new Entities.Models.ChatMessage
+            {
+                SessionID = sessionId,
+                Role = "user",
+                Content = userContent,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _uow.ChatSessions.AddMessageAsync(userMsg);
+
+            string? sourcesJson = null;
+            if (sources != null && sources.Count > 0)
+            {
+                try { sourcesJson = JsonSerializer.Serialize(sources); }
+                catch { /* ignore */ }
+            }
+
+            var assistantMsg = new Entities.Models.ChatMessage
+            {
+                SessionID = sessionId,
+                Role = "assistant",
+                Content = assistantContent,
+                SourcesJson = sourcesJson,
+                CreatedAt = DateTime.UtcNow.AddMilliseconds(1)
+            };
+            await _uow.ChatSessions.AddMessageAsync(assistantMsg);
+
+            await _uow.ChatSessions.TouchUpdatedAtAsync(sessionId);
+            await _uow.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionAsync(int sessionId, int userId)
+        {
+            var session = await _uow.ChatSessions.FirstOrDefaultAsync(s => s.SessionID == sessionId && s.UserID == userId);
+            if (session != null)
+            {
+                _uow.ChatSessions.Remove(session);
+                await _uow.SaveChangesAsync();
+            }
+        }
+
+        public async Task UpdateSessionTitleAsync(int sessionId, int userId, string title)
+        {
+            var session = await _uow.ChatSessions.FirstOrDefaultAsync(s => s.SessionID == sessionId && s.UserID == userId);
+            if (session != null)
+            {
+                session.Title = title.Trim();
+                session.UpdatedAt = DateTime.UtcNow;
+                _uow.ChatSessions.Update(session);
+                await _uow.SaveChangesAsync();
+            }
+        }
+
+        public async Task UpdateSessionSubjectAsync(int sessionId, int userId, int? subjectId)
+        {
+            var session = await _uow.ChatSessions.FirstOrDefaultAsync(s => s.SessionID == sessionId && s.UserID == userId);
+            if (session != null)
+            {
+                session.SubjectId = subjectId;
+                session.UpdatedAt = DateTime.UtcNow;
+                _uow.ChatSessions.Update(session);
+                await _uow.SaveChangesAsync();
+            }
+        }
     }
 }

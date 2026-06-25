@@ -96,5 +96,70 @@ Ngữ cảnh:
                 return "Lỗi nội bộ khi xử lý câu trả lời với AI.";
             }
         }
+
+        public async Task<string> GenerateDirectAnswerAsync(string prompt)
+        {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger.LogWarning("Gemini API Key is not configured.");
+                return "Hệ thống chưa được cấu hình API Key của Gemini.";
+            }
+
+            var payload = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new[] { new { text = prompt } }
+                    }
+                },
+                generationConfig = new
+                {
+                    temperature = 0.1,
+                    maxOutputTokens = 1024
+                }
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            string url = $"https://generativelanguage.googleapis.com/v1beta/models/{_modelName}:generateContent?key={_apiKey}";
+
+            try
+            {
+                var response = await _httpClient.PostAsync(url, content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorBody = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Gemini API error. Status: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
+                    return "Đã xảy ra lỗi khi kết nối tới mô hình AI.";
+                }
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                
+                using var jsonDoc = JsonDocument.Parse(responseString);
+                var candidates = jsonDoc.RootElement.GetProperty("candidates");
+                
+                if (candidates.GetArrayLength() > 0)
+                {
+                    var text = candidates[0]
+                        .GetProperty("content")
+                        .GetProperty("parts")[0]
+                        .GetProperty("text")
+                        .GetString();
+                        
+                    return text ?? "Không nhận được phản hồi từ AI.";
+                }
+
+                return "Không thể trích xuất câu trả lời từ hệ thống.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception while calling Gemini API directly");
+                return "Lỗi nội bộ khi xử lý câu trả lời với AI.";
+            }
+        }
     }
 }

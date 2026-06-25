@@ -130,9 +130,22 @@ namespace LearningDocumentSystem.Business.DTOs
         public int ChunkCount { get; set; }
     }
 
+    public class DocumentConflictDto
+    {
+        public int ConflictID { get; set; }
+        public int DocumentID { get; set; }
+        public int ConflictingDocumentID { get; set; }
+        public string ConflictingDocumentTitle { get; set; } = string.Empty;
+        public int ChunkID { get; set; }
+        public int ConflictingChunkID { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public DateTime DetectedAt { get; set; }
+    }
+
     public class DocumentDetailDto : DocumentDto
     {
         public List<ChunkDto> Chunks { get; set; } = new();
+        public List<DocumentConflictDto> Conflicts { get; set; } = new();
     }
 
     public class ChunkDto
@@ -157,6 +170,35 @@ namespace LearningDocumentSystem.Business.DTOs
         public int? PageNumber { get; set; }
         public float SimilarityScore { get; set; }
         public string ContentSnippet { get; set; } = string.Empty;
+    }
+
+    // ================================================================
+    // CHAT SESSION DTOs
+    // ================================================================
+    public class ChatSessionDto
+    {
+        public int SessionID { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int? SubjectId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public int MessageCount { get; set; }
+        public string? LastMessagePreview { get; set; }
+    }
+
+    public class ChatMessageDto
+    {
+        public int MessageID { get; set; }
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public List<ChatSourceDto> Sources { get; set; } = new();
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class CreateChatSessionDto
+    {
+        public string? Title { get; set; }
+        public int? SubjectId { get; set; }
     }
 
     public class MonthlyUploadDto

@@ -252,12 +252,14 @@ namespace LearningDocumentSystem.Data.Seeders
                     var ext = fileTypes[random.Next(fileTypes.Length)];
                     var uniqueId = Guid.NewGuid().ToString()[..8];
                     
+                    var storagePath = $"demo_{uniqueId}.{ext}";
                     var document = new Document
                     {
                         ChapterID = chapter.ChapterID,
                         Title = title,
                         FileType = ext,
-                        StoragePath = $"demo_{uniqueId}.{ext}",
+                        StoragePath = storagePath,
+                        OriginalFileName = storagePath,
                         FileSizeInBytes = random.Next(102400, 5242880), // 100 KB to 5 MB
                         IndexStatus = "Indexed",
                         UploadedBy = teacher.UserID,

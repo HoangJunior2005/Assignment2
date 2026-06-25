@@ -4,6 +4,7 @@ using LearningDocumentSystem.Data.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LearningDocumentSystem.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622180001_AddChatSessionHistory")]
+    partial class AddChatSessionHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,11 +199,6 @@ namespace LearningDocumentSystem.Data.Migrations
                     b.Property<DateTime?>("IndexedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<string>("StoragePath")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -227,10 +225,6 @@ namespace LearningDocumentSystem.Data.Migrations
 
                     b.HasIndex("FileHash")
                         .HasDatabaseName("IX_Documents_FileHash");
-
-                    b.HasIndex("OriginalFileName")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Documents_OriginalFileName");
 
                     b.HasIndex("UploadedBy")
                         .HasDatabaseName("IX_Documents_UploadedBy");
@@ -266,51 +260,6 @@ namespace LearningDocumentSystem.Data.Migrations
                         .HasDatabaseName("IX_Chunks_DocumentID");
 
                     b.ToTable("DocumentChunks", (string)null);
-                });
-
-            modelBuilder.Entity("LearningDocumentSystem.Entities.Models.DocumentConflict", b =>
-                {
-                    b.Property<int>("ConflictID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ConflictID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConflictID"));
-
-                    b.Property<int>("ChunkID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ConflictingChunkID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ConflictingDocumentID")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("DetectedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<int>("DocumentID")
-                        .HasColumnType("int");
-
-                    b.HasKey("ConflictID");
-
-                    b.HasIndex("ChunkID");
-
-                    b.HasIndex("ConflictingChunkID");
-
-                    b.HasIndex("ConflictingDocumentID")
-                        .HasDatabaseName("IX_DocumentConflicts_ConflictingDocumentID");
-
-                    b.HasIndex("DocumentID")
-                        .HasDatabaseName("IX_DocumentConflicts_DocumentID");
-
-                    b.ToTable("DocumentConflicts", (string)null);
                 });
 
             modelBuilder.Entity("LearningDocumentSystem.Entities.Models.Embedding", b =>
@@ -530,41 +479,6 @@ namespace LearningDocumentSystem.Data.Migrations
                         .HasForeignKey("DocumentID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Document");
-                });
-
-            modelBuilder.Entity("LearningDocumentSystem.Entities.Models.DocumentConflict", b =>
-                {
-                    b.HasOne("LearningDocumentSystem.Entities.Models.DocumentChunk", "Chunk")
-                        .WithMany()
-                        .HasForeignKey("ChunkID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LearningDocumentSystem.Entities.Models.DocumentChunk", "ConflictingChunk")
-                        .WithMany()
-                        .HasForeignKey("ConflictingChunkID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LearningDocumentSystem.Entities.Models.Document", "ConflictingDocument")
-                        .WithMany()
-                        .HasForeignKey("ConflictingDocumentID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("LearningDocumentSystem.Entities.Models.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Chunk");
-
-                    b.Navigation("ConflictingChunk");
-
-                    b.Navigation("ConflictingDocument");
 
                     b.Navigation("Document");
                 });

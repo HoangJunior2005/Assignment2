@@ -34,5 +34,7 @@ namespace LearningDocumentSystem.Entities.Models
         // Navigation properties
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
         public virtual ICollection<Document> Documents { get; set; } = new List<Document>();
+        public virtual ICollection<ChatSession> ChatSessions { get; set; } = new List<ChatSession>();
+
     }
 }
