@@ -103,9 +103,9 @@ Khi bạn chạy dự án lần đầu tiên, hệ thống sẽ **tự động c
 
 | Tên Đăng Nhập | Mật Khẩu | Vai Trò (Role) | Chức Năng |
 | :--- | :--- | :--- | :--- |
-| **`admin`** | `Admin@123` | **Quản Trị Viên (Admin)** | Quản lý người dùng, duyệt email giảng viên, xem biểu đồ thống kê hệ thống |
-| **`nguyenvan_gv`** | `Teacher@123` | **Giảng Viên (Teacher)** | Quản lý môn học, chương học, upload tài liệu học tập, xem tài liệu bị trùng lặp |
-| **`tranmanh_sv`** | `Student@123` | **Sinh Viên (Student)** | Chat với trợ lý ảo AI để hỏi đáp dựa trên tài liệu của môn học/chương |
+| **`admin@university.edu.vn`** | `Admin@123` | **Quản Trị Viên (Admin)** | Quản lý người dùng, duyệt email giảng viên, xem biểu đồ thống kê hệ thống |
+| **`teacher@university.edu.vn`** | `Teacher@123` | **Giảng Viên (Teacher)** | Quản lý môn học, chương học, upload tài liệu học tập, xem tài liệu bị trùng lặp |
+| **`student@student.edu.vn`** | `Student@123` | **Sinh Viên (Student)** | Chat với trợ lý ảo AI để hỏi đáp dựa trên tài liệu của môn học/chương |
 
 ---
 
