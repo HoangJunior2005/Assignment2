@@ -85,7 +85,7 @@ Dưới đây là các bảng chính trong Database:
 *   `DocumentConflicts`: Lưu thông tin các đoạn tài liệu bị trùng lặp hoặc xung đột nội dung.
 
 ### 2. Hướng dẫn cấu hình Kết nối (Connection String)
-Mở tệp [appsettings.json](file:///c:/Users/Administrator/Desktop/Assignment_2/LearningDocumentSystem/LearningDocumentSystem.Web/appsettings.json) trong thư mục `LearningDocumentSystem.Web`:
+Tạo tệp [appsettings.json](file:///c:/Users/Administrator/Desktop/Assignment_2/LearningDocumentSystem/LearningDocumentSystem.Web/appsettings.json) trong thư mục `LearningDocumentSystem.Web`:
 
 ```json
 "ConnectionStrings": {
