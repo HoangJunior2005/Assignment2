@@ -8,43 +8,8 @@ Chào mừng bạn đến với **Learning Document System (LDS)**, giải pháp
 
 Dự án được thiết kế theo mô hình kiến trúc **3 lớp (3-Tier Architecture)** phân tách rõ ràng trách nhiệm để dễ bảo trì và nâng cấp:
 
-```mermaid
-graph TD
-    %% Tầng Presentation (Web)
-    subgraph Presentation_Layer [Tầng Giao Diện - Web Project]
-        A[Razor Pages UI] <--> B[ViewModels / DTOs]
-        C[SignalR Notification Hub] <--> A
-        D[Static Files CSS/JS] --> A
-    end
+<img width="1271" height="692" alt="ASS2 drawio" src="https://github.com/user-attachments/assets/81eff58d-2a4c-4c89-ab86-d3fd45ee05bc" />
 
-    %% Tầng Business (Business Logic)
-    subgraph Business_Layer [Tầng Nghiệp Vụ - Business Project]
-        E[Auth Service]
-        F[Document & Chunking Service]
-        G[Embedding & Chat Service]
-        H[Gemini AI Service]
-        
-        %% Mối quan hệ trong Business
-        F -->|Băm từ tài liệu PDF/Docx| G
-        G -->|Tìm kiếm tương đồng ngữ nghĩa| H
-    end
-
-    %% Tầng Data (Data Access)
-    subgraph Data_Layer [Tầng Dữ Liệu - Data Project]
-        I[AppDbContext EF Core]
-        J[Generic Repositories / Unit of Work]
-        K[SQL Server Database]
-        L[Data Seeder]
-        
-        I <--> J
-        J <--> K
-        L -->|Khởi tạo| I
-    end
-
-    %% Liên kết giữa các Tầng
-    Presentation_Layer <-->|Giao tiếp Service| Business_Layer
-    Business_Layer <-->|Truy vấn dữ liệu| Data_Layer
-```
 
 ### 1. Tầng Dữ Liệu (LearningDocumentSystem.Data)
 *   **Entities**: Định nghĩa cấu trúc các bảng trong cơ sở dữ liệu.
@@ -227,15 +192,3 @@ git commit -m "Mô tả ngắn gọn những gì bạn đã sửa đổi"
 #### 6. Gửi code đã lưu lên server trên mạng (Push)
 ```bash
 git push
-```
-
----
-
-### ⚠️ Quy Tắc Vàng Khi Dùng Git Để Tránh Lỗi (Conflict)
-**Conflict (Xung đột)** xảy ra khi bạn và đồng đội cùng sửa trên một dòng code trong cùng một file, khiến Git không biết nên chọn dòng của ai. Để tránh điều này:
-1.  **Luôn PULL trước khi CODE**: Đầu ngày làm việc, hãy Pull hoặc Fetch code mới nhất về.
-2.  **Chia nhỏ công việc**: Hạn chế việc sửa chung một tệp tin với người khác cùng một lúc.
-3.  Nếu gặp lỗi Xung đột (Conflict) khi push/pull, đừng hoảng loạn:
-    *   Mở file bị báo lỗi lên (sẽ có các ký tự `<<<<<<< HEAD`, `=======`, `>>>>>>>`).
-    *   Thảo luận với người sửa chung để chọn giữ lại code của ai hoặc gộp cả hai.
-    *   Xóa các ký tự đánh dấu đó đi, lưu lại file, chạy lại lệnh `git add .`, `git commit` và `git push`.
