@@ -27,17 +27,38 @@ namespace LearningDocumentSystem.Web.Pages.Chapters
         [BindProperty]
         public ChapterFormViewModel Input { get; set; } = new();
 
-        public async Task OnGetAsync(int? subjectId)
+        public async Task<IActionResult> OnGetAsync(int? subjectId)
         {
-            Input.Subjects = await GetAllowedSubjectsAsync();
+            var allowed = await GetAllowedSubjectsAsync();
+            if (User.IsInRole(AppConstants.RoleTeacher) && subjectId.HasValue)
+            {
+                if (!allowed.Any(s => s.SubjectID == subjectId.Value))
+                {
+                    TempData["Error"] = "Bạn không có quyền quản lý chương học cho môn học này.";
+                    return RedirectToPage("./Index");
+                }
+            }
+            Input.Subjects = allowed;
             Input.SubjectID = subjectId ?? 0;
+            return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            var allowed = await GetAllowedSubjectsAsync();
+            if (User.IsInRole(AppConstants.RoleTeacher))
+            {
+                if (!allowed.Any(s => s.SubjectID == Input.SubjectID))
+                {
+                    ModelState.AddModelError(string.Empty, "Bạn không có quyền tạo chương học cho môn học này.");
+                    Input.Subjects = allowed;
+                    return Page();
+                }
+            }
+
             if (!ModelState.IsValid)
             {
-                Input.Subjects = await GetAllowedSubjectsAsync();
+                Input.Subjects = allowed;
                 return Page();
             }
 
@@ -55,7 +76,7 @@ namespace LearningDocumentSystem.Web.Pages.Chapters
             catch (Exception ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                Input.Subjects = await GetAllowedSubjectsAsync();
+                Input.Subjects = allowed;
                 return Page();
             }
         }
